@@ -22,10 +22,10 @@ class RaceEnv(gym.Env):
 
     def step(self, action):
         self.pyrace.action(action)
-        reward, dist = self.pyrace.evaluate(self.reward)
+        reward, dist, laps = self.pyrace.evaluate(self.reward)
         done = self.pyrace.is_done()
         obs = self.pyrace.observe()
-        return obs, reward, done, {}
+        return obs, reward, done, {'laps': laps}
 
     def render(self, mode="human", close=False):
         if self.is_view:

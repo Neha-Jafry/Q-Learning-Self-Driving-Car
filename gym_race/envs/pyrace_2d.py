@@ -5,12 +5,10 @@ from pygame.constants import FULLSCREEN
 
 screen_width = 1920
 screen_height = 1080
-# check_point = ((1200, 660), (1250, 120), (190, 200), (1030, 270), (250, 475), (850, 910))
 check_point1 = ((1276,943), (1609,825), (1711,453), (1590,243), (925,118), (345,217), (209,500), (295,741),(760, 935)) # map 1
 check_point2 = ((1223, 825),(1461,995),(1591, 497),(1155,445),(1205,215),(273,95),(310,430),(695,480),(365,740),(760, 935)) # map 2
 check_point4 = ((1540,730),(885,715),(920,600),(1690,615),(1760,890),(1720,90),(1540,415),(1385,125),(1200,415),(995,111),(840,350),(270,125),(480,340),(300,540),(730,533),(310,745),(360,915),(653,885),(760, 935)) # map4
 check_point3 = ((1703,890), (1707, 150), (1370,430), (1110, 567), (1577, 785), (901,777), (697,109), (285,760), (103,129), (145,780), (673, 373), (617,911),(760, 935)) # map 3
-# chk_idx = 0
 CAR_SIZE_X = 40
 CAR_SIZE_Y = 40
 MAP = 'map'
@@ -49,6 +47,8 @@ class Car:
         self.distance = 0
         self.time_spent = 0
         self.l_goal = False
+        self.time = 0
+        self.laps = 0
 
 
     def draw(self, screen):
@@ -112,17 +112,17 @@ class Car:
                 self.current_check = 0
                 self.visited = []
                 self.l_goal = True
+                
             self.goal = True
             
         self.cur_distance = dist
 
     def update(self):
-        #check speed
-        self.speed -= 0.5
-        if self.speed > 10:
-            self.speed = 10
-        if self.speed < 1:
-            self.speed = 1
+        self.time += 1
+
+        if self.speedInit == False:
+            self.speed = 20
+            self.speedInit = True
 
         #check position
         self.rotate_surface = rot_center(self.surface, self.angle)
@@ -132,7 +132,7 @@ class Car:
         elif self.pos[0] > screen_width - 120:
             self.pos[0] = screen_width - 120
 
-        self.distance += self.speed
+        self.distance += self.speed  
         self.time_spent += 1
         self.pos[1] += math.sin(math.radians(360 - self.angle)) * self.speed
         if self.pos[1] < 20:
@@ -185,13 +185,16 @@ class PyRace2D:
         elif self.car.goal:
             if self.car.l_goal:
                 reward += 50
+                self.car.laps += 1
+                self.car.l_goal = False
+
             else:
                 if self.car.current_check not in self.car.visited:
                     reward += self.car.distance//10
                     self.car.visited.append(self.car.current_check)
                 else:
                     self.car.goal = False
-        return reward, self.car.distance
+        return reward, self.car.distance, self.car.laps
 
     def is_done(self):
         if not self.car.is_alive:

@@ -58,24 +58,30 @@ def learn(decayFactor, simulate = True ,  epsilonMin = 0.001,
     gamma = 0.99
     reward = 0
     rewardList = []
+    lapsList = []
     avgList = []
     avg_c = 0
     meanBuffer = np.zeros(100)
+    meanLapsBuffer = np.zeros(100)
     done = False
     env.set_view(simulate)
     threshold = 1000
     tReward =0
+    tLaps=0
     savetime = "-".join(str(datetime.datetime.fromtimestamp(time.time()))[:-10].split(":"))
     filename = MAP + '-' + savetime + str(EPISODES)
 
     for e in range(EPISODES):
 
         meanBuffer[avg_c] = tReward
+        meanLapsBuffer[avg_c] = tLaps
         avg_c += 1
 
         if (e+1) % 100 ==0 and e != 0:
             rewardList.append(np.mean(meanBuffer))
+            lapsList.append(np.mean(meanLapsBuffer))
             meanBuffer = np.zeros(100)
+            meanLapsBuffer = np.zeros(100)
             avg_c = 0
             
         if (e+1) % 5000 ==0 and e !=0:
@@ -93,6 +99,7 @@ def learn(decayFactor, simulate = True ,  epsilonMin = 0.001,
             with open(filename+'-%d.csv' %ep, 'w', encoding='UTF8') as f:
                 writer = csv.writer(f)
                 writer.writerow(rewardList)
+                writer.writerow(lapsList)
                 writer.writerow(avgList)
         
         observation = env.reset()
@@ -104,10 +111,11 @@ def learn(decayFactor, simulate = True ,  epsilonMin = 0.001,
         
         for steps in range(maxSteps):
             action = chooseAction(state0, epsilon)
-            observation, reward, done, _ = env.step(action)
+            observation, reward, done, info = env.step(action)
             state = makeBucket(observation)
             env.remember(state0, action, reward, state, done)
             tReward += reward
+            tLaps = info['laps']
             bestQ  = np.amax(qTable[state])
             qTable[state0 + (action,)] += lr *(reward+ gamma*(bestQ) - qTable[state0 + (action,)])
 
@@ -116,8 +124,8 @@ def learn(decayFactor, simulate = True ,  epsilonMin = 0.001,
             env.render()
 
             if  done or steps >= maxSteps-1:
-                print("Episode %d : steps taken: %i total reward = %f."
-                      % (e, steps, tReward))
+                print("Episode %d : steps taken: %i total reward = %f total laps = %f."
+                      % (e, steps, tReward, tLaps))
                 break
 
         #updating epsilon and lr
@@ -157,17 +165,18 @@ def test_model(file, maxSteps=2000):
         totalReward = 0 
         for steps in range(maxSteps):
             action =chooseAction(state0 ,0.01)
-            observation, reward, done, _  = env.step(action)
+            observation, reward, done, info  = env.step(action)
             state = makeBucket(observation)
             totalReward += reward
+            laps = info['laps']
             bestQ  = np.amax(qTable[state])
             qTable[state0 + (action , )] += lr * (reward + gamma* (bestQ) - qTable[state0 + (action,)])
             state0 = state
 
             env.render()
             if done or steps >= maxSteps -1:
-                print("Episode %d finished after %i time steps with total reward = %f."
-                      % (e, steps, totalReward))            
+                print("Episode %d finished after %i time steps with total reward = %f total laps = %f."
+                      % (e, steps, totalReward, laps))            
                 break
         
         if totalReward >=  1000:
@@ -199,7 +208,7 @@ qTable = np.zeros(buckets + (actions,), dtype=float)
 
 decayFactor = np.prod(buckets, dtype=float) / 10.0
 
-print(decayFactor)
+print('decay', decayFactor)
 #start the learning process
 
 #To train a new model un comment the next line
